@@ -94,6 +94,53 @@
   .bob{animation:bob 2.4s ease-in-out infinite;}
   @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
 
+  /* ---------- Mascot tap interactions ---------- */
+  .mascot{position:relative;cursor:pointer;}
+  .mascot.anim-wave{animation:mascotWave .9s ease;}
+  @keyframes mascotWave{
+    0%{transform:rotate(0deg) scale(1);}
+    15%{transform:rotate(-9deg) scale(1.05);}
+    35%{transform:rotate(11deg);}
+    55%{transform:rotate(-7deg);}
+    75%{transform:rotate(5deg);}
+    100%{transform:rotate(0deg) scale(1);}
+  }
+  .mascot.anim-spin{animation:mascotSpin .8s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes mascotSpin{
+    0%{transform:translateY(0) rotate(0deg) scale(1);}
+    30%{transform:translateY(-22px) rotate(180deg) scale(1.12);}
+    60%{transform:translateY(-26px) rotate(360deg) scale(1.12);}
+    100%{transform:translateY(0) rotate(360deg) scale(1);}
+  }
+  .mascot.anim-wiggle{animation:mascotWiggle .7s ease-in-out;}
+  @keyframes mascotWiggle{
+    0%,100%{transform:translateX(0) rotate(0deg);}
+    20%{transform:translateX(-9px) rotate(-7deg);}
+    40%{transform:translateX(9px) rotate(7deg);}
+    60%{transform:translateX(-7px) rotate(-5deg);}
+    80%{transform:translateX(7px) rotate(5deg);}
+  }
+
+  .speech-bubble{
+    position:absolute;top:0;left:50%;
+    transform:translate(-50%,-100%) scale(.5);
+    background:#fff;color:var(--ink);font-family:'Baloo 2',sans-serif;font-weight:700;font-size:.95rem;
+    padding:7px 14px;border-radius:16px;box-shadow:0 3px 0 #E3DFF2;white-space:nowrap;
+    opacity:0;pointer-events:none;transition:all .22s ease;z-index:6;
+  }
+  .speech-bubble::after{
+    content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
+    border-width:6px 6px 0;border-style:solid;border-color:#fff transparent transparent;
+  }
+  .speech-bubble.show{opacity:1;transform:translate(-50%,-110%) scale(1);}
+
+  .sparkle{position:absolute;font-size:1.1rem;opacity:0;pointer-events:none;animation:sparklePop .7s ease forwards;z-index:5;}
+  @keyframes sparklePop{
+    0%{opacity:0;transform:scale(.3) translateY(0);}
+    40%{opacity:1;transform:scale(1.2) translateY(-8px);}
+    100%{opacity:0;transform:scale(.8) translateY(-22px);}
+  }
+
   /* ---------- Celebration modal ---------- */
   .modal-overlay{position:fixed;inset:0;background:rgba(43,37,64,.55);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:50;}
   .modal-overlay.show{opacity:1;pointer-events:auto;}
@@ -119,7 +166,7 @@
 
   <!-- HOME -->
   <section id="view-home" class="view active">
-    <div class="mascot-wrap bob">
+    <div class="mascot-wrap mascot bob">
       <svg viewBox="0 0 200 200" width="100%" height="100%">
         <ellipse cx="100" cy="185" rx="55" ry="10" fill="#000" opacity=".08"/>
         <rect x="70" y="120" width="60" height="55" rx="18" fill="#3FA9F5"/>
@@ -158,7 +205,7 @@
   <!-- LETTER DETAIL -->
   <section id="view-letter" class="view">
     <button class="back-btn" data-back="grid">⬅ Back</button>
-    <div class="mascot-small bob">
+    <div class="mascot-small mascot bob">
       <svg viewBox="0 0 200 200" width="100%" height="100%">
         <circle cx="100" cy="80" r="52" fill="#FFFFFF" stroke="#3FA9F5" stroke-width="8"/>
         <circle cx="100" cy="34" r="8" fill="#FFCA3A"/>
@@ -235,6 +282,77 @@
   });
   document.querySelectorAll('.back-btn').forEach(btn => {
     btn.addEventListener('click', () => showView(btn.dataset.back));
+  });
+
+  /* ---------------- Mascot tap interactions ---------------- */
+  const MASCOT_ANIMATIONS = [
+    { cls: 'anim-wave',   bubble: 'Hi friend!', speak: 'Hi friend!', duration: 900 },
+    { cls: 'anim-spin',   bubble: 'Wheee!',      speak: 'Whee!',      duration: 800 },
+    { cls: 'anim-wiggle', bubble: 'Hehe!',       speak: 'Hehe!',      duration: 700, sparkles: true },
+  ];
+
+  function showBubble(container, text){
+    const bubble = document.createElement('div');
+    bubble.className = 'speech-bubble';
+    bubble.textContent = text;
+    container.appendChild(bubble);
+    requestAnimationFrame(() => bubble.classList.add('show'));
+    setTimeout(() => {
+      bubble.classList.remove('show');
+      setTimeout(() => bubble.remove(), 220);
+    }, 1100);
+  }
+
+  function spawnSparkles(container){
+    const emojis = ['✨','⭐','🌟'];
+    for (let i = 0; i < 5; i++){
+      const s = document.createElement('span');
+      s.className = 'sparkle';
+      s.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      s.style.left = (10 + Math.random() * 80) + '%';
+      s.style.top = (10 + Math.random() * 60) + '%';
+      s.style.animationDelay = (Math.random() * 0.15) + 's';
+      container.appendChild(s);
+      setTimeout(() => s.remove(), 800);
+    }
+  }
+
+  function playMascotChime(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(660, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    }catch(e){}
+  }
+
+  function triggerMascotAnimation(el){
+    if (el.dataset.animating === '1') return; // ignore taps mid-animation
+    el.dataset.animating = '1';
+
+    const pick = MASCOT_ANIMATIONS[Math.floor(Math.random() * MASCOT_ANIMATIONS.length)];
+    el.classList.remove('bob');
+    el.classList.add(pick.cls);
+    showBubble(el, pick.bubble);
+    playMascotChime();
+    if (pick.sparkles) spawnSparkles(el);
+
+    setTimeout(() => {
+      el.classList.remove(pick.cls);
+      el.classList.add('bob');
+      el.dataset.animating = '0';
+    }, pick.duration + 50);
+  }
+
+  document.querySelectorAll('.mascot').forEach(el => {
+    el.addEventListener('click', () => triggerMascotAnimation(el));
   });
 
   /* ---------------- Accurate stroke-order paths ---------------- */

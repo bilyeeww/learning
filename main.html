@@ -70,9 +70,25 @@
 
   /* ---------- Letter detail ---------- */
   .mascot-small{width:80px;height:80px;margin-bottom:2px;}
-  .case-label{
-    font-family:'Baloo 2',sans-serif;font-weight:700;font-size:1.05rem;color:var(--sky-deep);
-    background:#EAF5FF;padding:6px 18px;border-radius:999px;margin-bottom:6px;
+  .case-tabs{display:flex;gap:10px;margin-bottom:6px;width:100%;max-width:280px;}
+  .tab-btn{
+    flex:1;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:1rem;
+    background:#EAF5FF;color:var(--sky-deep);padding:10px 6px;border-radius:16px;
+    box-shadow:0 3px 0 #D3E8F7;display:flex;flex-direction:column;align-items:center;line-height:1.15;
+  }
+  .tab-btn span{font-size:.68rem;font-weight:600;opacity:.75;}
+  .tab-btn.active{background:linear-gradient(135deg,var(--sky),var(--sky-deep));color:#fff;box-shadow:0 3px 0 #1F6BA8;}
+  .tab-btn.active span{opacity:.9;}
+
+  .step-dots{display:flex;gap:8px;justify-content:center;margin:2px 0 18px;min-height:12px;}
+  .step-dot{width:12px;height:12px;border-radius:50%;background:#E4E1F0;transition:background .2s ease,transform .2s ease;}
+  .step-dot.done{background:var(--mint);}
+  .step-dot.current{background:var(--sun);transform:scale(1.25);}
+
+  .refresh-btn{
+    position:absolute;top:10px;right:10px;width:42px;height:42px;border-radius:50%;
+    background:#fff;box-shadow:0 3px 0 #E3DFF2;display:flex;align-items:center;justify-content:center;
+    font-size:1.25rem;z-index:4;
   }
   .letter-stage{
     position:relative;width:100%;background:var(--card);border-radius:28px;box-shadow:0 6px 0 #E3DFF2;
@@ -191,14 +207,15 @@
     <p class="subtitle">Pick something fun to play</p>
     <div class="category-list">
       <button class="cat-btn" data-cat="alpha">🔤 Alphabet</button>
+      <button class="cat-btn" data-cat="numbers">🔢 Numbers</button>
       <button class="cat-btn disabled" data-cat="others">✨ Others<span class="soon">Soon!</span></button>
     </div>
   </section>
 
-  <!-- ALPHABET GRID -->
+  <!-- GRID (shared by Alphabet and Numbers) -->
   <section id="view-grid" class="view">
     <button class="back-btn" data-back="home">⬅ Back</button>
-    <h2>Pick a Letter</h2>
+    <h2 id="gridTitle">Pick a Letter</h2>
     <div class="grid" id="letterGrid"></div>
   </section>
 
@@ -217,14 +234,19 @@
         <path d="M82 102 Q100 116 118 102" stroke="#2B2540" stroke-width="5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
-    <div class="case-label" id="caseLabel">Capital Letter</div>
+    <div class="case-tabs" id="caseTabs">
+      <button class="tab-btn active" data-case="upper">ABC <span>Capital</span></button>
+      <button class="tab-btn" data-case="lower">abc <span>small</span></button>
+    </div>
     <div class="letter-stage">
+      <button id="refreshBtn" class="refresh-btn" aria-label="Start over">🔄</button>
       <svg id="strokeSvg" viewBox="0 0 100 132">
         <g id="guideGroup"></g>
         <g id="drawGroup"></g>
         <circle id="pencilTip" r="6" cx="0" cy="0"></circle>
       </svg>
     </div>
+    <div class="step-dots" id="stepDots"></div>
     <div class="action-row">
       <button id="writeBtn" class="action-btn">✏️ Watch It Write</button>
       <button id="soundBtn" class="action-btn">🔊 Hear It</button>
@@ -264,20 +286,43 @@
 
   const tileColors = ['#3FA9F5','#FF6F61','#3DDC97','#FFCA3A','#B47EEA'];
   const letterGrid = document.getElementById('letterGrid');
+  const gridTitle = document.getElementById('gridTitle');
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  letters.forEach((L, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'letter-btn';
-    btn.style.background = tileColors[i % tileColors.length];
-    btn.innerHTML = `${L}<small>${L.toLowerCase()}</small>`;
-    btn.addEventListener('click', () => openLetter(L));
-    letterGrid.appendChild(btn);
-  });
+  const numbers = ['0','1','2','3','4','5','6','7','8','9','10'];
+
+  function renderGrid(category){
+    letterGrid.innerHTML = '';
+    if (category === 'alpha'){
+      gridTitle.textContent = 'Pick a Letter';
+      letters.forEach((L, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'letter-btn';
+        btn.style.background = tileColors[i % tileColors.length];
+        btn.innerHTML = `${L}<small>${L.toLowerCase()}</small>`;
+        btn.addEventListener('click', () => openItem(L, 'alpha'));
+        letterGrid.appendChild(btn);
+      });
+    } else if (category === 'numbers'){
+      gridTitle.textContent = 'Pick a Number';
+      numbers.forEach((n, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'letter-btn';
+        btn.style.background = tileColors[i % tileColors.length];
+        btn.textContent = n;
+        btn.addEventListener('click', () => openItem(n, 'numbers'));
+        letterGrid.appendChild(btn);
+      });
+    }
+  }
 
   document.querySelectorAll('.cat-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.classList.contains('disabled')) return;
-      if (btn.dataset.cat === 'alpha') showView('grid');
+      const cat = btn.dataset.cat;
+      if (cat === 'alpha' || cat === 'numbers'){
+        renderGrid(cat);
+        showView('grid');
+      }
     });
   });
   document.querySelectorAll('.back-btn').forEach(btn => {
@@ -415,24 +460,82 @@
     z: ["M30,45 L70,45", "M70,45 L30,105", "M30,105 L70,105"],
   };
 
+  /* Digits 0-10. Same coordinate box as letters (x 0-100, y 5-105), except "10"
+     which uses its own wider viewBox since it's two characters side by side. */
+  const NUMBER_STROKES = {
+    '0': ["M50,2 C80,2 88,27 88,52 C88,77 80,102 50,102 C20,102 12,77 12,52 C12,27 20,2 50,2"],
+    '1': ["M35,20 L50,5 L50,105"],
+    '2': ["M20,25 Q20,5 50,5 Q80,5 80,25 Q80,45 55,65 L20,105 L80,105"],
+    '3': ["M20,15 Q20,5 45,5 Q75,5 75,25 Q75,45 50,50 Q75,55 75,80 Q75,105 45,105 Q20,105 18,90"],
+    '4': ["M65,5 L20,70 L80,70", "M65,5 L65,105"],
+    '5': ["M20,8 L75,8", "M22,10 L22,55 Q60,50 72,72 Q80,95 55,103 Q28,108 18,88"],
+    '6': ["M65,8 Q25,15 20,55 Q15,95 45,105 Q75,105 75,78 Q75,55 48,58 Q28,60 25,78"],
+    '7': ["M18,8 L82,8", "M82,8 L35,105"],
+    '8': ["M50,5 C35,5 25,15 25,28 C25,41 35,50 50,50 C65,50 75,41 75,28 C75,15 65,5 50,5",
+          "M50,55 C33,55 20,66 20,80 C20,94 33,105 50,105 C67,105 80,94 80,80 C80,66 67,55 50,55"],
+    '9': ["M70,30 C70,15 58,5 45,5 C30,5 20,15 20,30 C20,45 32,55 47,55 C58,55 68,48 70,38 L70,90 Q70,105 50,105"],
+    '10': ["M22,20 L34,8 L34,105",
+           "M96,8 C112,8 118,30 118,55 C118,80 112,102 96,102 C80,102 74,80 74,55 C74,30 80,8 96,8"],
+  };
+  const NUMBER_WORDS = {
+    '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five',
+    '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '10': 'ten',
+  };
+
   const guideGroup = document.getElementById('guideGroup');
   const drawGroup = document.getElementById('drawGroup');
   const pencilTip = document.getElementById('pencilTip');
-  const caseLabel = document.getElementById('caseLabel');
+  const caseTabs = document.getElementById('caseTabs');
+  const strokeSvg = document.getElementById('strokeSvg');
+  const stepDotsEl = document.getElementById('stepDots');
   const writeBtn = document.getElementById('writeBtn');
   const soundBtn = document.getElementById('soundBtn');
   const celebrateBtn = document.getElementById('celebrateBtn');
 
   let currentLetter = 'A';
-  let currentCase = 'upper'; // which case is currently displayed / about to be traced
+  let currentCategory = 'alpha'; // 'alpha' or 'numbers'
+  let currentCase = 'upper';     // only meaningful when currentCategory === 'alpha'
   let drawPaths = [];
+  let stepIndex = 0; // how many strokes have been completed so far
 
-  function buildCase(caseType){
-    currentCase = caseType;
-    const strokes = caseType === 'upper' ? UPPER_STROKES[currentLetter] : LOWER_STROKES[currentLetter.toLowerCase()];
+  function renderStepDots(){
+    stepDotsEl.innerHTML = '';
+    drawPaths.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'step-dot' + (i < stepIndex ? ' done' : '') + (i === stepIndex ? ' current' : '');
+      stepDotsEl.appendChild(dot);
+    });
+  }
+
+  function updateWriteBtnLabel(){
+    const total = drawPaths.length;
+    if (stepIndex >= total){
+      writeBtn.textContent = '✅ All Done!';
+    } else {
+      writeBtn.textContent = `✏️ Write Step ${stepIndex + 1}/${total}`;
+    }
+  }
+
+  function buildDisplay(caseType){
+    let strokes;
+    if (currentCategory === 'alpha'){
+      currentCase = caseType;
+      strokes = caseType === 'upper' ? UPPER_STROKES[currentLetter] : LOWER_STROKES[currentLetter.toLowerCase()];
+      caseTabs.style.display = 'flex';
+      caseTabs.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.case === caseType);
+      });
+      strokeSvg.setAttribute('viewBox', '0 0 100 132');
+    } else {
+      strokes = NUMBER_STROKES[currentLetter];
+      caseTabs.style.display = 'none';
+      strokeSvg.setAttribute('viewBox', currentLetter === '10' ? '0 0 130 132' : '0 0 100 132');
+    }
+
     guideGroup.innerHTML = '';
     drawGroup.innerHTML = '';
     pencilTip.style.opacity = 0;
+    stepIndex = 0;
 
     drawPaths = strokes.map(d => {
       const guide = document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -450,12 +553,21 @@
       return { el: draw, len };
     });
 
-    caseLabel.textContent = caseType === 'upper' ? 'Capital Letter' : 'Small Letter';
+    renderStepDots();
+    updateWriteBtnLabel();
   }
 
-  function openLetter(L){
-    currentLetter = L;
-    buildCase('upper');
+  caseTabs.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (currentCategory !== 'alpha' || btn.dataset.case === currentCase) return;
+      buildDisplay(btn.dataset.case);
+    });
+  });
+
+  function openItem(value, category){
+    currentLetter = value;
+    currentCategory = category;
+    buildDisplay('upper');
     showView('letter');
   }
 
@@ -475,26 +587,38 @@
     });
   }
 
-  async function playWriteAnimation(){
-    writeBtn.disabled = true; soundBtn.disabled = true; celebrateBtn.disabled = true;
+  function resetToStart(){
+    stepIndex = 0;
     drawPaths.forEach(p => { p.el.style.strokeDashoffset = p.len; });
-    pencilTip.style.opacity = 1;
-    for (const p of drawPaths){
-      await animateStroke(p, 700);
-      await new Promise(r => setTimeout(r, 120));
-    }
     pencilTip.style.opacity = 0;
-    // toggle to the other case, ready (but not animated) for the next click
-    buildCase(currentCase === 'upper' ? 'lower' : 'upper');
-    writeBtn.disabled = false; soundBtn.disabled = false; celebrateBtn.disabled = false;
+    renderStepDots();
+    updateWriteBtnLabel();
+    writeBtn.disabled = false;
   }
 
-  writeBtn.addEventListener('click', playWriteAnimation);
+  document.getElementById('refreshBtn').addEventListener('click', resetToStart);
+
+  async function handleWriteClick(){
+    if (stepIndex >= drawPaths.length){
+      resetToStart(); // finished before — this click starts a fresh pass
+    }
+    writeBtn.disabled = true;
+    pencilTip.style.opacity = 1;
+    await animateStroke(drawPaths[stepIndex], 700);
+    pencilTip.style.opacity = 0;
+    stepIndex++;
+    renderStepDots();
+    updateWriteBtnLabel();
+    writeBtn.disabled = false; // always re-enable, including once all steps are done
+  }
+
+  writeBtn.addEventListener('click', handleWriteClick);
 
   soundBtn.addEventListener('click', () => {
     if (!('speechSynthesis' in window)) return;
     speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(currentLetter);
+    const textToSpeak = currentCategory === 'numbers' ? NUMBER_WORDS[currentLetter] : currentLetter;
+    const utter = new SpeechSynthesisUtterance(textToSpeak);
     utter.rate = 0.7; utter.pitch = 1.3; utter.lang = 'en-US';
     speechSynthesis.speak(utter);
   });
